@@ -17,7 +17,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()
-    .setTitle('PayFlow - Digital Wallet')
+    .setTitle('PayFlow - Fernanda Ruiz')
     .setDescription('The PayFlow API documentation')
     .setVersion('1.0')
     .addBearerAuth()
