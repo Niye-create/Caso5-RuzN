@@ -1,37 +1,35 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Habilitar validación global
   app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
+    new ValidationPipe(
+      {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }
+    )
   );
-
-  app.setGlobalPrefix('api');
+  // Habilitar ClassSerializerInterceptor para excluir datos sensibles
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)))
 
   const config = new DocumentBuilder()
-    .setTitle('PayFlow - Fernanda Ruiz')
-    .setDescription('The PayFlow API documentation')
+    .setTitle('API Fernanda')
+    .setDescription('Documentación Swagger para estudiantes (productos, categorías, inventario)')
     .setVersion('1.0')
-    .addBearerAuth()
+    .addTag('productos')
     .build();
+
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('api', app, document);
 
-  const port = process.env.PORT || 3001;
-  await app.listen(port);
-
-  console.log(`🚀 Server running on http://localhost:${port}/api`);
-  console.log(
-    `📖 Documentation available on http://localhost:${port}/api/docs`,
-  );
+  await app.listen(process.env.PORT ?? 3000);
+  console.log(`Servidor escuchando en el puerto ${process.env.PORT ?? 3001}`);
 }
-
 bootstrap();

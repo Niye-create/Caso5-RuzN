@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
 @Global()
 @Module({
   imports: [
@@ -15,8 +16,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: false,
         logging: false,
+        ssl: {
+          rejectUnauthorized: false,
+        },
       }),
     }),
   ],
