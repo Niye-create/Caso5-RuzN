@@ -5,7 +5,7 @@ import {
   OnGatewayDisconnect,
   SubscribeMessage,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { Namespace, Socket } from 'socket.io';
 import { Logger, Inject, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -22,7 +22,7 @@ export class NotificationsGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit, OnModuleDestroy
 {
   @WebSocketServer()
-  server!: Server;
+  server!: Namespace;
 
   private readonly logger = new Logger(NotificationsGateway.name);
   private cleanupInterval?: NodeJS.Timeout;
@@ -50,27 +50,65 @@ export class NotificationsGateway
   private checkExpiredTokens() {
     try {
       this.logger.debug('⏰ Ejecutando chequeo proactivo de tokens JWT expirados...');
-      const sockets = this.server.of('/notifications').sockets;
       const now = Math.floor(Date.now() / 1000);
       let disconnectCount = 0;
 
-      sockets.forEach((socket) => {
-        const user = socket.data.user;
-        if (user && user.exp) {
-          if (now >= user.exp) {
-            this.logger.warn(
-              `🔒 Sesión expirada para el usuario ${user.email || 'desconocido'} (ID: ${user.sub || socket.data.userId}). Desconectando socket proactivamente: ${socket.id}`,
-            );
-            socket.emit('session_expired', { message: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.' });
-            socket.disconnect(true);
-            disconnectCount++;
-          }
+      for (const { socketId } of this.connectedUsersService.getAllConnectedUsers()) {
+        const socket = this.server.sockets.get(socketId);
+        if (!socket) {
+          continue;
         }
-      });
+
+        const user = socket.data.user as { exp?: number; email?: string; sub?: number } | undefined;
+        if (user?.exp && now >= user.exp) {
+          this.logger.warn(
+            `🔒 Sesión expirada para el usuario ${user.email || socket.data.email || 'desconocido'} (ID: ${user.sub ?? socket.data.userId}). Desconectando socket: ${socket.id}`,
+          );
+          socket.emit('session_expired', {
+            message: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+          });
+          socket.disconnect(true);
+          disconnectCount++;
+        }
+      }
 
       if (disconnectCount > 0) {
-        this.logger.log(`⏰ Se desconectaron proactivamente ${disconnectCount} sockets con tokens JWT expirados.`);
+        this.logger.log(
+          `⏰ Se desconectaron proactivamente ${disconnectCount} sockets con tokens JWT expirados.`,
+        );
       }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error al realizar el chequeo de tokens expirados: ${message}`, error);
+    }
+  }
+
+  handleConnection(client: Socket) {
+    try {
+      this.logger.debug('SOCKET CONNECTED');
+      this.logger.debug('handshake.auth: ' + JSON.stringify(client.handshake.auth));
+
+      const token =
+        client.handshake.auth?.token ||
+        client.handshake.query?.token ||
+        this.extractTokenFromSocket(client);
+
+      if (!token) {
+        this.logger.warn(`Conexión sin token. Socket: ${client.id}`);
+        client.emit('connection_error', { message: 'Auth token missing' });
+        client.disconnect(true);
+        return;
+      }
+
+      const jwtSecret = this.configService.get<string>('JWT_SECRET');
+      const decoded = this.jwtService.verify(token, { secret: jwtSecret });
+
+      client.data.user = decoded;
+      client.data.userId = decoded.sub;
+      client.data.email = decoded.email;
+
+      const userId = client.data.userId as number;
+      const email = client.data.email as string;
 
       if (!userId) {
         this.logger.warn(`Conexión sin userId tras verificación. Socket: ${client.id}`);
@@ -78,14 +116,24 @@ export class NotificationsGateway
         return;
       }
 
+      // registrar usuario conectado
       this.connectedUsersService.registerConnection(
         userId,
         client.id,
         email || 'unknown',
       );
 
+      this.logger.log(`REGISTERED USER: ${userId} socket: ${client.id}`);
+
+      // evento de confirmación
+      client.emit('connection_established', {
+        ok: true,
+        userId,
+        socketId: client.id,
+      });
+
       this.logger.log(
-        `Conexión exitosa - Usuario: ${email} (ID: ${userId}), Socket: ${client.id}`,
+        `🔌 Usuario conectado: ${email} (${userId}) - Socket: ${client.id}`,
       );
     } catch (error) {
       this.logger.error('Error en handleConnection', error);
@@ -286,4 +334,3 @@ export class NotificationsGateway
     return this.connectedUsersService.isConnected(userId);
   }
 }
-

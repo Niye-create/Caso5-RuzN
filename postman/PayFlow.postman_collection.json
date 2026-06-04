@@ -1,0 +1,425 @@
+{
+  "info": {
+    "name": "PayFlow API - Completa",
+    "_postman_id": "payflow-collection-complete",
+    "description": "Colección completa de PayFlow - Autenticación, Transferencias, Correo/OTP, Notificaciones WebSocket",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 AUTENTICACIÓN",
+      "item": [
+        {
+          "name": "1. Registrar Usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    console.log('✅ Usuario registrado exitosamente');",
+                  "} else {",
+                  "    console.log('❌ Error en registro: ' + pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Juan Usuario\",\n  \"email\": \"juan@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Login (Obtener Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('token', jsonData.access_token);",
+                  "    console.log('✅ Token guardado exitosamente');",
+                  "} else {",
+                  "    console.log('❌ Error en login: ' + pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"juan@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2b. Login ADMIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('admin_token', jsonData.access_token);",
+                  "    console.log('✅ ADMIN Token guardado');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📧 CORREO Y OTP",
+      "item": [
+        {
+          "name": "1. Solicitar Código OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    console.log('✅ OTP enviado al correo');",
+                  "    console.log('💡 Revisa tu bandeja de entrada (o spam)');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"juan@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mail/request-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["mail", "request-otp"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Verificar Código OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ OTP verificado correctamente');",
+                  "} else if (pm.response.code === 400) {",
+                  "    console.log('❌ OTP inválido o expirado');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"juan@example.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mail/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["mail", "verify-otp"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "💰 TRANSFERENCIAS (RF-01)",
+      "item": [
+        {
+          "name": "1. Realizar Transferencia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    console.log('✅ Transferencia exitosa');",
+                  "    console.log('📬 Se envió correo de comprobante');",
+                  "    console.log('📡 Se envió notificación WebSocket a ambos usuarios');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toAccountId\": 2,\n  \"amount\": 50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transfer",
+              "host": ["{{baseUrl}}"],
+              "path": ["transfer"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🏦 DEPÓSITO (RF-02 - ADMIN ONLY)",
+      "item": [
+        {
+          "name": "1. Realizar Depósito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    console.log('✅ Depósito exitoso');",
+                  "    console.log('📬 Se envió correo de confirmación');",
+                  "    console.log('📡 Se envió notificación WebSocket');",
+                  "} else if (pm.response.code === 403) {",
+                  "    console.log('❌ Solo ADMIN puede hacer depósitos');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toAccountId\": 1,\n  \"amount\": 500\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transfer/deposit",
+              "host": ["{{baseUrl}}"],
+              "path": ["transfer", "deposit"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🏧 RETIRO (WITHDRAW)",
+      "item": [
+        {
+          "name": "1. Realizar Retiro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    console.log('✅ Retiro exitoso');",
+                  "    console.log('📬 Se envió confirmación por correo');",
+                  "    console.log('📡 Se envió notificación WebSocket');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": 1,\n  \"amount\": 100\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transfer/withdraw",
+              "host": ["{{baseUrl}}"],
+              "path": ["transfer", "withdraw"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📡 WEBSOCKET - NOTIFICACIONES (TIEMPO REAL)",
+      "item": [
+        {
+          "name": "Conectar a WebSocket",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:3000/notifications",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["notifications"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📊 TRANSACCIONES",
+      "item": [
+        {
+          "name": "1. Obtener Historial",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transaction?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["transaction"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🔔 NOTIFICACIONES",
+      "item": [
+        {
+          "name": "1. Obtener Notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
